@@ -1,0 +1,32 @@
+# fastapi
+# uvicorn
+# sqlalchemy
+# psycopg2-binary
+# pydantic
+# alembic
+# pytest
+# httpx
+
+fastapi
+uvicorn[standard]
+sqlmodel
+psycopg2-binary
+asyncpg
+pgvector
+# lightfm
+celery[redis]
+redis
+flower
+alembic
+python-dotenv
+pytest
+httpx
+passlib[bcrypt]
+python-jose[cryptography]
+PyJWT
+
+
+# Note: heavy ML / GPU packages (sentence-transformers, torch, etc.) have
+# been moved to `requirements-ml.txt` so the main image stays small and
+# builds faster. If you need ML features, install them separately:
+# pip install -r requirements-ml.txt

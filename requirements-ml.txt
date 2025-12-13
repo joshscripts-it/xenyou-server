@@ -1,0 +1,7 @@
+# Heavy ML dependencies kept separate to avoid large Docker image downloads
+sentence-transformers>=2.2.2
+# Optional FAISS for local vector search (choose cpu or cuda wheel)
+# faiss-cpu>=1.7.3
+numpy>=1.24
+scipy
+torch  # optional, only if you need transformer GPU builds
