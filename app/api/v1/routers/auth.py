@@ -14,7 +14,7 @@ from app.auth import (
 from app.db.session import get_db
 
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 @router.post("/signup")
@@ -25,11 +25,12 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.email == payload.email)
     existing = await db.execute(stmt)
     if existing.scalars().first():
-        raise HTTPException(400, "Email exists")
+        raise HTTPException(400, "Email already exists")
 
     if payload.role not in ("student", "landlord", "admin"):
         raise HTTPException(400, "Invalid role")
 
+    # create new user
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
@@ -45,15 +46,14 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     if payload.role == "student":
         sp = StudentProfile(
             user_id=user.id,
-            university="kwara state university" or payload.university,
-            student_id="12234567" or payload.student_id,
+            student_id=str(user.id),
         )
         db.add(sp)
     elif payload.role == "landlord":
-        lp = LandlordProfile(user_id=user.id, full_name=payload.full_name or "")
+        lp = LandlordProfile(user_id=user.id)
         db.add(lp)
     else:
-        ap = AdminProfile(user_id=user.id, full_name=payload.full_name or "")
+        ap = AdminProfile(user_id=user.id)
         db.add(ap)
 
     await db.commit()
@@ -70,6 +70,9 @@ async def login(payload: Login, db: AsyncSession = Depends(get_db)) -> Token:
     stmt = select(User).where(User.email == payload.email)
     result = await db.execute(stmt)
     user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid credentials")

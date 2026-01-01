@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.api.v1.routers import auth
+from app.api.v1.routers import search
 from app.db.session import create_db_and_tables
+
+
+from app.api.v1.routers import hostels
 
 
 # from app.api.v1 import search  # new
@@ -28,6 +32,8 @@ app = FastAPI(lifespan=lifespan)
 #     create_db_and_tables()
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
+app.include_router(hostels.router, prefix="/api/v1/hostels")
 
 
 @app.get("/")

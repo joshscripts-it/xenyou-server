@@ -9,16 +9,25 @@ router = APIRouter()
 
 @router.post("/log")
 async def log_interaction(
-    student_id: int,
-    property_id: int,
+    user_id: str,
+    property_id: str,
     event_type: str,
     session: AsyncSession = Depends(get_db),
 ):
     """Log a user interaction event (view, click, save, skip, etc.)."""
 
     interaction = InteractionEvent(
-        user_id=student_id, property_id=property_id, event_type=event_type
+        user_id=user_id, property_id=property_id, event_type=event_type
     )
     session.add(interaction)
     await session.commit()
-    return {"message": "Interaction logged"}
+    await session.refresh(interaction)
+
+    return {
+        "message": "✅ Interaction logged successfully",
+        "interaction": {
+            "user_id": str(interaction.user_id),
+            "property_id": str(interaction.property_id),
+            "event_type": interaction.event_type,
+        },
+    }

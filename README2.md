@@ -82,3 +82,38 @@ For production scale:
 - Recommender auto-trains daily in the background.
 
 - Students get fresh, personalized hostel recommendations.
+
+
+
+## Database Design
+🧠 Overview of Key Entities
+
+- User (Base model) — Shared fields for all users.
+
+- Student — Inherits from User.
+
+- Landlord — Inherits from User.
+
+- Property — Apartment/listing owned by a landlord.
+
+- Verification — Stores landlord verification data (e.g. ID, CAC doc).
+
+- Match — Connects students with properties.
+
+- Admin — Internal management users.
+
+
+
+| Role     | Auth Source | Profile Table     | Verification           | Key Privileges                        |
+| -------- | ----------- | ----------------- | ---------------------- | ------------------------------------- |
+| Student  | users       | student_profiles  | student_verifications  | Search & match apartments             |
+| Landlord | users       | landlord_profiles | landlord_verifications | Create and manage listings            |
+| Admin    | users       | admin_profiles    | (optional)             | Approve verifications, oversee system |
+
+
+User ─┬─< Student
+       ├─< Landlord ──< Property ──< Match >─ Student
+       └─< Admin
+
+Landlord ──< Verification
+

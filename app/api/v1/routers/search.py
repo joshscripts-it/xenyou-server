@@ -2,33 +2,86 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.db.session import get_db
-from app.models.models import Property
+from app.models.models import Property, InteractionEvent
+
 from app.services.embeddings import EmbeddingService
-from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter()
 embedding_service = EmbeddingService()
 
 
-class Query(BaseModel):
-    text: str
-    max_price: int | None = None
+# Search endpoint (unchanged)
+@router.post("/")
+async def search_hostels(
+    query: str, max_price: Optional[int] = None, session: AsyncSession = Depends(get_db)
+):
+
+    # Get properties with features that have embedding vectors
+    from app.models.models import PropertyFeature
+
+    h_stmt = select(Property).where(Property.is_available == True)
+
+    result = await session.execute(h_stmt)
+    hostels = result.scalars().all()
+    query_emb = embedding_service.embed(query)
+
+    # naive similarity (dot product or cosine similarity)
+    def cosine_sim(v1, v2):
+        import numpy as np
+
+        v1, v2 = np.array(v1), np.array(v2)
+        return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
+    results = []
+    for h in hostels:
+        if max_price and h.price and h.price > max_price:
+            continue
+        # Get embedding from PropertyFeature if available
+        embedding = h.features.embedding_vector if h.features else None
+        if not embedding:
+            continue
+        sim = cosine_sim(query_emb, embedding)
+        results.append(
+            {
+                "id": str(h.id),
+                "title": h.title,
+                "description": h.description,
+                "price": h.price,
+                "score": sim,
+            }
+        )
+
+    return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-@router.post("/search")
-async def search(query: Query, session: AsyncSession = Depends(get_db)):
-    """Search for properties based on query text and optional price filter."""
+# 👇 NEW: Hostel detail with auto logging
+@router.get("/hostel/{hostel_id}")
+async def get_hostel_detail(
+    hostel_id: str,
+    user_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    hostel_stmt = select(Property).where(Property.id == hostel_id)
+    result = await session.execute(hostel_stmt)
+    hostel = result.scalars().first()
 
-    # 1. Embed the query
-    q_emb = embedding_service.embed(query.text)
+    if not hostel:
+        return {"error": "Property not found"}
 
-    # 2. Search with pgvector (cosine distance)
-    statement = select(Property).order_by(Property.embedding_vector).limit(5)
-    result = await session.execute(statement)
-    properties = result.scalars().all()
+    # ✅ Auto-log viewed interaction
+    interaction = InteractionEvent(
+        user_id=user_id, property_id=hostel_id, event_type="viewed"
+    )
+    session.add(interaction)
+    await session.commit()
 
-    # 3. Apply price filter
-    if query.max_price:
-        properties = [p for p in properties if p.price and p.price <= query.max_price]
-
-    return {"results": [p.dict() for p in properties]}
+    return {
+        "message": "✅ Property fetched + view logged",
+        "property": {
+            "id": str(hostel.id),
+            "title": hostel.title,
+            "description": hostel.description,
+            "price": hostel.price,
+        },
+    }

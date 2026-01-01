@@ -15,13 +15,14 @@ from datetime import datetime
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     firstname: str = Field(nullable=False)
     lastname: str = Field(nullable=False)
     phone: str = Field(nullable=False)
     email: str = Field(index=True, nullable=False)
     password_hash: str = Field(nullable=False)
     role: str = Field(nullable=False)
+    is_verified: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=datetime.now, nullable=False)
     updated_at: Optional[datetime] = Field(default_factory=datetime.now, nullable=False)
 
@@ -29,6 +30,7 @@ class User(SQLModel, table=True):
     student_profile: Optional["StudentProfile"] = Relationship(back_populates="user")
     landlord_profile: Optional["LandlordProfile"] = Relationship(back_populates="user")
     admin_profile: Optional["AdminProfile"] = Relationship(back_populates="user")
+    # verification: Optional["Verification"]
 
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
     search_queries: List["SearchQuery"] = Relationship(back_populates="user")
@@ -58,6 +60,9 @@ class StudentProfile(SQLModel, table=True):
 
     embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    verification: Optional["StudentVerification"] = Relationship(
+        back_populates="student", cascade_delete=True
+    )
 
     user: Optional["User"] = Relationship(back_populates="student_profile")
 
@@ -71,15 +76,16 @@ class LandlordProfile(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", unique=True)
 
-    full_name: Optional[str] = None
-    phone_number: Optional[str] = None
     verified: bool = Field(default=False)
     verification_info: Optional[dict] = Field(default=None, sa_type=JSON)
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
-
+    updated_at: Optional[datetime] = Field(default_factory=datetime.now)
     user: Optional["User"] = Relationship(back_populates="landlord_profile")
     properties: List["Property"] = Relationship(back_populates="landlord")
+    verification: Optional["LandlordVerification"] = Relationship(
+        back_populates="landlord", cascade_delete=True
+    )
 
 
 # ===================
@@ -91,24 +97,71 @@ class AdminProfile(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", unique=True)
 
-    full_name: Optional[str] = None
     role_level: Optional[str] = None
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.now)
 
     user: Optional["User"] = Relationship(back_populates="admin_profile")
+    verification: Optional["AdminVerification"] = Relationship(
+        back_populates="admin", cascade_delete=True
+    )
 
 
-# ===================
+class LandlordVerification(SQLModel, table=True):
+    __tablename__ = "landlord_verifications"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    landlord_id: Optional[UUID] = Field(
+        default=None, foreign_key="landlord_profiles.id", nullable=True
+    )
+    id_type: str = Field(nullable=False)  # e.g. 'NIN', 'CAC'
+    document_url: str = Field(nullable=False)
+    verified: bool = Field(default=False)
+    verified_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+
+    landlord: Optional["LandlordProfile"] = Relationship(back_populates="verification")
+
+
+class StudentVerification(SQLModel, table=True):
+    __tablename__ = "student_verifications"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    student_id: UUID = Field(foreign_key="student_profiles.id")
+    id_type: str = Field(nullable=False)  # e.g. 'Student ID Card'
+    document_url: str = Field(nullable=False)
+    verified: bool = Field(default=False)
+    verified_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+
+    student: Optional["StudentProfile"] = Relationship(back_populates="verification")
+
+
+class AdminVerification(SQLModel, table=True):
+    __tablename__ = "admin_verifications"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    admin_id: UUID = Field(foreign_key="admin_profiles.id")
+    id_type: str = Field(nullable=False)  # e.g. 'Government ID', 'Admin Credentials'
+    document_url: str = Field(nullable=False)
+    verified: bool = Field(default=False)
+    verified_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+
+    admin: Optional["AdminProfile"] = Relationship(back_populates="verification")
+
+
+# ===========================
 # Properties (multi-property)
-# ===================
+# ===========================
 class Property(SQLModel, table=True):
     __tablename__ = "properties"
 
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     landlord_id: UUID = Field(foreign_key="landlord_profiles.id")
 
-    title: str = Field(nullable=False)
+    title: str = Field(nullable=False, unique=True)
     description: Optional[str] = None
 
     location_text: Optional[str] = None
@@ -119,6 +172,10 @@ class Property(SQLModel, table=True):
     type: Optional[str] = None
     gender_restriction: Optional[str] = None
     is_available: bool = Field(default=True)
+    pet_owner: Optional[bool] = None
+    move_in_date: Optional[datetime] = None
+    rent_duration: Optional[str] = None
+    embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 

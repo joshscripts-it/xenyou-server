@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     firstname: str
     lastname: str
     phone: str
+    is_verified: Optional[bool] = False
 
 
 class Token(BaseModel):
@@ -26,6 +27,7 @@ class Login(BaseModel):
 
 class PropertyCreate(BaseModel):
     title: str
+    landlord_id: UUID
     description: Optional[str]
     location_text: Optional[str]
     price: float
