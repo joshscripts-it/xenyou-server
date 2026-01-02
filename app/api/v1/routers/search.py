@@ -2,46 +2,53 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.db.session import get_db
-from app.models.models import Property, InteractionEvent
+from app.models.models import Property, InteractionEvent, User
+from app.deps.dependencies import get_current_user
 
 from app.services.embeddings import EmbeddingService
 from typing import Optional
+from app.schemas.schemas import SearchRequest, SearchResponse
+from sqlalchemy.orm import selectinload
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter()
 embedding_service = EmbeddingService()
 
 
 # Search endpoint (unchanged)
-@router.post("/")
+@router.post("/", response_model=SearchResponse)
 async def search_hostels(
-    query: str, max_price: Optional[int] = None, session: AsyncSession = Depends(get_db)
+    payload: SearchRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
     # Get properties with features that have embedding vectors
     from app.models.models import PropertyFeature
 
     h_stmt = select(Property).where(Property.is_available == True)
+    if payload.max_price is not None:
+        h_stmt = h_stmt.where(Property.price <= payload.max_price)
+    h_stmt = h_stmt.options(selectinload(Property.features))
 
     result = await session.execute(h_stmt)
     hostels = result.scalars().all()
-    query_emb = embedding_service.embed(query)
+    query_emb = await run_in_threadpool(embedding_service.embed, payload.query)
 
-    # naive similarity (dot product or cosine similarity)
-    def cosine_sim(v1, v2):
+    # use inner product (matches pgvector inner product semantics)
+    def inner_product(v1, v2):
         import numpy as np
 
         v1, v2 = np.array(v1), np.array(v2)
-        return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+        return float(np.dot(v1, v2))
 
     results = []
     for h in hostels:
-        if max_price and h.price and h.price > max_price:
-            continue
         # Get embedding from PropertyFeature if available
         embedding = h.features.embedding_vector if h.features else None
         if not embedding:
             continue
-        sim = cosine_sim(query_emb, embedding)
+        sim = inner_product(query_emb, embedding)
         results.append(
             {
                 "id": str(h.id),
@@ -52,10 +59,11 @@ async def search_hostels(
             }
         )
 
-    return sorted(results, key=lambda x: x["score"], reverse=True)
+    sorted_results = sorted(results, key=lambda x: x["score"], reverse=True)
+    return {"results": sorted_results}
 
 
-# 👇 NEW: Hostel detail with auto logging
+# 👇 NEW: listing detail with auto logging
 @router.get("/hostel/{hostel_id}")
 async def get_hostel_detail(
     hostel_id: str,

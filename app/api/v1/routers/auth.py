@@ -12,9 +12,12 @@ from app.auth import (
     verify_password,
 )
 from app.db.session import get_db
+from starlette.concurrency import run_in_threadpool
+from app.services.embeddings import EmbeddingService
 
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(tags=["auth"])
+embedding_service = EmbeddingService()
 
 
 @router.post("/signup")
@@ -44,9 +47,14 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()  # Get user.id
 
     if payload.role == "student":
+        # Generate embedding for student profile
+        text_to_embed = f"{payload.firstname} {payload.lastname} {payload.email}"
+        embedding = await run_in_threadpool(embedding_service.embed, text_to_embed)
+
         sp = StudentProfile(
             user_id=user.id,
             student_id=str(user.id),
+            embedding_vector=embedding,
         )
         db.add(sp)
     elif payload.role == "landlord":

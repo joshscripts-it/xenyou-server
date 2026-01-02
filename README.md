@@ -88,7 +88,7 @@ xenyou/
 
 5. **Run the Application**
    ```bash
-   uvicorn app.main:app --reload
+   python init.py
    ```
 
 ## Usage

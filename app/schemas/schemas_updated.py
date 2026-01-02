@@ -13,14 +13,6 @@ class UserCreate(BaseModel):
     phone: str
     is_verified: Optional[bool] = False
 
-    # Optional fields for student profile
-    university: Optional[str] = None
-    budget_min: Optional[int] = None
-    budget_max: Optional[int] = None
-    preferred_location: Optional[str] = None
-    preferred_room_type: Optional[str] = None
-    preferred_amenities: Optional[List[str]] = None
-
 
 class Token(BaseModel):
     access_token: str
@@ -106,48 +98,3 @@ class InteractionData(BaseModel):
 class InteractionResponse(BaseModel):
     message: str
     interaction: InteractionData
-
-
-# -----------------
-# Recommendation schemas
-# -----------------
-class RecommendationProperty(BaseModel):
-    id: UUID
-    title: str
-    description: Optional[str]
-    price: Optional[float]
-
-    class Config:
-        from_attributes = True
-
-
-class RecommendationResponse(BaseModel):
-    recommendations: Optional[List[RecommendationProperty]] = None
-    message: Optional[str] = None
-
-
-class TrainingResponse(BaseModel):
-    task_id: str
-    status: str
-
-
-# -----------------
-# Recommendation schemas
-# -----------------
-class RecommendationRequest(BaseModel):
-    student_id: UUID
-
-
-class PropertySummary(BaseModel):
-    id: UUID
-    title: str
-    description: Optional[str]
-    price: Optional[float]
-
-    class Config:
-        from_attributes = True
-
-
-class RecommendationResponse(BaseModel):
-    message: Optional[str] = None
-    recommendations: Optional[List[PropertySummary]] = None

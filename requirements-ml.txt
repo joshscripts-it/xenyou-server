@@ -4,4 +4,4 @@ sentence-transformers>=2.2.2
 # faiss-cpu>=1.7.3
 numpy>=1.24
 scipy
-torch  # optional, only if you need transformer GPU builds
+torch  # optional, only if you need transformer GPU buildslightfm

@@ -175,7 +175,7 @@ class Property(SQLModel, table=True):
     pet_owner: Optional[bool] = None
     move_in_date: Optional[datetime] = None
     rent_duration: Optional[str] = None
-    embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
+    # embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 

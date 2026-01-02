@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 from app.db.session import get_db
-from app.models.models import Property, User, LandlordProfile
+from app.models.models import Property, User, LandlordProfile, PropertyFeature
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.schemas.schemas import PropertyCreate
 from app.services.embeddings import EmbeddingService
+from starlette.concurrency import run_in_threadpool
 from app.deps.dependencies import get_current_user
 
 
@@ -47,10 +48,12 @@ async def add_property(
     stmt = select(Property).where(Property.title == payload.title)
     res = await session.execute(stmt)
     if res.scalars().first():
-        raise HTTPException(status_code=400, detail="Property title already exists")
+        raise HTTPException(
+            status_code=400, detail="Property with this name already exists"
+        )
 
-    # Generate embedding for the property description
-    emb = embedding_service.embed(payload.description)
+    # Generate embedding for the property description (offload blocking call)
+    emb = await run_in_threadpool(embedding_service.embed, payload.description)
 
     property_obj = Property(
         id=uuid4(),
@@ -60,10 +63,12 @@ async def add_property(
         description=payload.description,
         price=payload.price,
         location_text=payload.location_text,
-        embedding_vector=emb,
     )
 
     session.add(property_obj)
+    # create a PropertyFeature record for this property (embedding stored here)
+    feature = PropertyFeature(property_id=property_obj.id, embedding_vector=emb)
+    session.add(feature)
     try:
         await session.commit()
     except IntegrityError as err:
