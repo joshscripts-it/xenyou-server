@@ -6,6 +6,8 @@ from typing import Optional, List
 from uuid import UUID, uuid4
 from datetime import datetime
 
+from app.schemas.schemas import StudentProfile
+
 
 # ===================
 # Core Identity
@@ -27,17 +29,33 @@ class User(SQLModel, table=True):
     updated_at: Optional[datetime] = Field(default_factory=datetime.now, nullable=False)
 
     # Relationships (forward references as strings)
-    student_profile: Optional["StudentProfile"] = Relationship(back_populates="user")
-    landlord_profile: Optional["LandlordProfile"] = Relationship(back_populates="user")
-    admin_profile: Optional["AdminProfile"] = Relationship(back_populates="user")
+    student_profile: Optional["StudentProfile"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    landlord_profile: Optional["LandlordProfile"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    admin_profile: Optional["AdminProfile"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
     # verification: Optional["Verification"]
 
-    chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
-    search_queries: List["SearchQuery"] = Relationship(back_populates="user")
-    interactions: List["InteractionEvent"] = Relationship(back_populates="user")
-    recommendations: List["Recommendation"] = Relationship(back_populates="user")
-    saved_properties: List["SavedProperty"] = Relationship(back_populates="user")
-    matches: List["Match"] = Relationship(back_populates="user")
+    chat_sessions: List["ChatSession"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    search_queries: List["SearchQuery"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    interactions: List["InteractionEvent"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    recommendations: List["Recommendation"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    saved_properties: List["SavedProperty"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    matches: List["Match"] = Relationship(back_populates="user", cascade_delete=True)
 
 
 # ===================
@@ -63,8 +81,9 @@ class StudentProfile(SQLModel, table=True):
     verification: Optional["StudentVerification"] = Relationship(
         back_populates="student", cascade_delete=True
     )
-
-    user: Optional["User"] = Relationship(back_populates="student_profile")
+    user: Optional["User"] = Relationship(
+        back_populates="student_profile", cascade_delete=True
+    )
 
 
 # ===================
@@ -81,8 +100,14 @@ class LandlordProfile(SQLModel, table=True):
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = Field(default_factory=datetime.now)
-    user: Optional["User"] = Relationship(back_populates="landlord_profile")
-    properties: List["Property"] = Relationship(back_populates="landlord")
+
+    # relationships
+    user: Optional["User"] = Relationship(
+        back_populates="landlord_profile", cascade_delete=True
+    )
+    properties: List["Property"] = Relationship(
+        back_populates="landlord", cascade_delete=True
+    )
     verification: Optional["LandlordVerification"] = Relationship(
         back_populates="landlord", cascade_delete=True
     )
@@ -121,7 +146,9 @@ class LandlordVerification(SQLModel, table=True):
     verified_at: Optional[datetime] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    landlord: Optional["LandlordProfile"] = Relationship(back_populates="verification")
+    landlord: Optional["LandlordProfile"] = Relationship(
+        back_populates="verification", cascade_delete=True
+    )
 
 
 class StudentVerification(SQLModel, table=True):
@@ -135,7 +162,9 @@ class StudentVerification(SQLModel, table=True):
     verified_at: Optional[datetime] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    student: Optional["StudentProfile"] = Relationship(back_populates="verification")
+    student: Optional["StudentProfile"] = Relationship(
+        back_populates="verification", cascade_delete=True
+    )
 
 
 class AdminVerification(SQLModel, table=True):
@@ -149,7 +178,9 @@ class AdminVerification(SQLModel, table=True):
     verified_at: Optional[datetime] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    admin: Optional["AdminProfile"] = Relationship(back_populates="verification")
+    admin: Optional["AdminProfile"] = Relationship(
+        back_populates="verification", cascade_delete=True
+    )
 
 
 # ===========================
@@ -175,17 +206,25 @@ class Property(SQLModel, table=True):
     pet_owner: Optional[bool] = None
     move_in_date: Optional[datetime] = None
     rent_duration: Optional[str] = None
-    # embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    landlord: Optional["LandlordProfile"] = Relationship(back_populates="properties")
+    # relationships
+    landlord: Optional["LandlordProfile"] = Relationship(
+        back_populates="properties", cascade_delete=True
+    )
     images: List["PropertyImage"] = Relationship(
         back_populates="property", cascade_delete=True
     )
-    features: Optional["PropertyFeature"] = Relationship(back_populates="property")
-    interactions: List["InteractionEvent"] = Relationship(back_populates="property")
-    recommendations: List["Recommendation"] = Relationship(back_populates="property")
+    features: Optional["PropertyFeature"] = Relationship(
+        back_populates="property", cascade_delete=True
+    )
+    interactions: List["InteractionEvent"] = Relationship(
+        back_populates="property", cascade_delete=True
+    )
+    recommendations: List["Recommendation"] = Relationship(
+        back_populates="property", cascade_delete=True
+    )
 
 
 class PropertyImage(SQLModel, table=True):
@@ -196,7 +235,9 @@ class PropertyImage(SQLModel, table=True):
 
     image_url: str = Field(nullable=False)
 
-    property: Optional["Property"] = Relationship(back_populates="images")
+    property: Optional["Property"] = Relationship(
+        back_populates="images", cascade_delete=True
+    )
 
 
 # ===================
@@ -216,7 +257,9 @@ class PropertyFeature(SQLModel, table=True):
 
     embedding_vector: Optional[list] = Field(default=None, sa_type=JSON)
 
-    property: Optional["Property"] = Relationship(back_populates="features")
+    property: Optional["Property"] = Relationship(
+        back_populates="features", cascade_delete=True
+    )
 
 
 # ===================
@@ -233,8 +276,12 @@ class ChatSession(SQLModel, table=True):
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="chat_sessions")
-    messages: List["ChatMessage"] = Relationship(back_populates="session")
+    user: Optional["User"] = Relationship(
+        back_populates="chat_sessions", cascade_delete=True
+    )
+    messages: List["ChatMessage"] = Relationship(
+        back_populates="session", cascade_delete=True
+    )
 
 
 class ChatMessage(SQLModel, table=True):
@@ -250,7 +297,9 @@ class ChatMessage(SQLModel, table=True):
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    session: Optional["ChatSession"] = Relationship(back_populates="messages")
+    session: Optional["ChatSession"] = Relationship(
+        back_populates="messages", cascade_delete=True
+    )
 
 
 # ===================
@@ -268,7 +317,9 @@ class SearchQuery(SQLModel, table=True):
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="search_queries")
+    user: Optional["User"] = Relationship(
+        back_populates="search_queries", cascade_delete=True
+    )
 
 
 # ===================
@@ -286,8 +337,12 @@ class Recommendation(SQLModel, table=True):
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="recommendations")
-    property: Optional["Property"] = Relationship(back_populates="recommendations")
+    user: Optional["User"] = Relationship(
+        back_populates="recommendations", cascade_delete=True
+    )
+    property: Optional["Property"] = Relationship(
+        back_populates="recommendations", cascade_delete=True
+    )
 
 
 # ===================
@@ -303,8 +358,12 @@ class InteractionEvent(SQLModel, table=True):
     event_type: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="interactions")
-    property: Optional["Property"] = Relationship(back_populates="interactions")
+    user: Optional["User"] = Relationship(
+        back_populates="interactions", cascade_delete=True
+    )
+    property: Optional["Property"] = Relationship(
+        back_populates="interactions", cascade_delete=True
+    )
 
 
 # ===================
@@ -319,7 +378,9 @@ class SavedProperty(SQLModel, table=True):
 
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="saved_properties")
+    user: Optional["User"] = Relationship(
+        back_populates="saved_properties", cascade_delete=True
+    )
 
 
 # ===================
@@ -335,7 +396,7 @@ class Match(SQLModel, table=True):
     match_score: Optional[float] = None
     matched_at: Optional[datetime] = Field(default_factory=datetime.now)
 
-    user: Optional["User"] = Relationship(back_populates="matches")
+    user: Optional["User"] = Relationship(back_populates="matches", cascade_delete=True)
 
 
 # ===================
@@ -344,7 +405,7 @@ class Match(SQLModel, table=True):
 class RefreshToken(SQLModel, table=True):
     __tablename__ = "refresh_tokens"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id")
     token: str = Field(unique=True, index=True, nullable=False)
     created_at: datetime = Field(default_factory=datetime.now)

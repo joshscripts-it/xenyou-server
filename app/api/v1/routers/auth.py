@@ -15,6 +15,8 @@ from app.db.session import get_db
 from starlette.concurrency import run_in_threadpool
 from app.services.embeddings import EmbeddingService
 
+# from app.crud.user import create_user
+
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(tags=["auth"])
 embedding_service = EmbeddingService()
@@ -33,6 +35,11 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     if payload.role not in ("student", "landlord", "admin"):
         raise HTTPException(400, "Invalid role")
 
+    if payload.role == "student" and not payload.student_id:
+        raise HTTPException(
+            status_code=400, detail="Role of student require a student ID"
+        )
+
     # create new user
     user = User(
         email=payload.email,
@@ -42,18 +49,26 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
         firstname=payload.firstname,
         lastname=payload.lastname,
     )
-
+    # user = await create_user(db, payload)
     db.add(user)
     await db.flush()  # Get user.id
 
     if payload.role == "student":
+
         # Generate embedding for student profile
         text_to_embed = f"{payload.firstname} {payload.lastname} {payload.email}"
         embedding = await run_in_threadpool(embedding_service.embed, text_to_embed)
 
         sp = StudentProfile(
             user_id=user.id,
-            student_id=str(user.id),
+            student_id=payload.student_id,
+            gender=payload.gender,
+            university=payload.university,
+            budget_min=payload.budget_min or "",
+            budget_max=payload.budget_max or "",
+            preferred_location=payload.preferred_location or "",
+            preferred_room_type=payload.preferred_room_type or "",
+            preferred_amenities=payload.preferred_amenities or "",
             embedding_vector=embedding,
         )
         db.add(sp)
@@ -68,7 +83,13 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
     access = create_access_token(user.id)
     refresh = await create_refresh_token(user.id)
-    return {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
+
+    return {
+        "message": "user created",
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/login", response_model=Token)

@@ -11,10 +11,12 @@ class UserCreate(BaseModel):
     firstname: str
     lastname: str
     phone: str
+    gender: str
     is_verified: Optional[bool] = False
 
     # Optional fields for student profile
-    university: Optional[str] = None
+    student_id: str
+    university: str
     budget_min: Optional[int] = None
     budget_max: Optional[int] = None
     preferred_location: Optional[str] = None

@@ -22,6 +22,7 @@ async def log_interaction(
         property_id=payload.property_id,
         event_type=payload.event_type,
     )
+
     session.add(interaction)
     await session.commit()
     await session.refresh(interaction)
